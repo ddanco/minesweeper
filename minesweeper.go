@@ -12,10 +12,11 @@ type square struct {
 	visible bool
 	count   *int
 }
-type row []square
+type row []*square
 type board []row
 
-func (s square) setCount(b board, i, j int) square {
+// Calculate bomb proximity count for a square
+func (s *square) setCount(b board, i, j int) {
 	count := 0
 	s.count = &count
 
@@ -64,54 +65,63 @@ func (s square) setCount(b board, i, j int) square {
 			*s.count++
 		}
 	}
-	return s
 }
 
-func printBoard(b board) {
-	fmt.Println(strings.Repeat("-", 4*len(b)+1))
+func printBoard(b board) error {
+	fmt.Println(strings.Repeat("-", 4*len(b[0])+1))
 	for i := 0; i < len(b); i++ {
 		for j := 0; j < len(b[i]); j++ {
 			s := b[i][j]
 			if s.count == nil {
-				s = s.setCount(b, i, j)
+				return fmt.Errorf("missing count for square: %d, %d", i, j)
 			}
 			var val string
-			if s.bomb {
+			switch {
+			case !s.visible:
+				val = "X"
+			case s.bomb:
 				val = "B"
-			} else {
+			default:
 				val = strconv.Itoa(*s.count)
 			}
 			fmt.Printf("| %v ", val)
 		}
-		fmt.Printf("|\n%s \n", strings.Repeat("-", 4*len(b)+1))
+		fmt.Printf("|\n%s \n", strings.Repeat("-", 4*len(b[i])+1))
 	}
+	return nil
 }
 
-func makeBoard() board {
+func makeBoard() *board {
 	b := board{}
 
-	// add ability to choose board size
-	for i := 0; i < 7; i++ {
+	// to do: add ability to choose board size
+	for i := 0; i < 5; i++ {
 		r := row{}
 		for j := 0; j < 7; j++ {
 			c := rand.Intn(100)
 			s := square{
 				visible: false,
 			}
-			// add ability to choose number of bombs
-			// also re-seed randomness
+			// to do: re-seed randomness
 			if c > 70 {
 				s.bomb = true
 			}
-			r = append(r, s)
+			r = append(r, &s)
 		}
 		b = append(b, r)
 	}
-	return b
+	for i, row := range b {
+		for j, square := range row {
+			square.setCount(b, i, j)
+		}
+	}
+	return &b
 }
 
 func main() {
 	b := makeBoard()
-	printBoard(b)
+	if err := printBoard(*b); err != nil {
+		fmt.Printf("Error: %v\n\n", err)
+	}
 	// add gameplay next
 }
